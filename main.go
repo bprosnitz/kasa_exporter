@@ -215,6 +215,10 @@ type GetVgainIgainResponse struct {
 var metrics = struct {
 	RelayState *prometheus.GaugeVec
 	OnTime     *prometheus.GaugeVec
+	Current    *prometheus.GaugeVec
+	Voltage    *prometheus.GaugeVec
+	Power      *prometheus.GaugeVec
+	Total      *prometheus.GaugeVec
 }{
 	RelayState: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "kasa_relay_state",
@@ -222,11 +226,27 @@ var metrics = struct {
 	OnTime: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "kasa_on_time",
 	}, []string{"device_id", "alias", "model", "mac"}),
+	Current: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "kasa_realtime_current_amps",
+	}, []string{"device_id", "alias", "model", "mac"}),
+	Voltage: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "kasa_realtime_voltage_volts",
+	}, []string{"device_id", "alias", "model", "mac"}),
+	Power: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "kasa_realtime_power_watts",
+	}, []string{"device_id", "alias", "model", "mac"}),
+	Total: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "kasa_realtime_total_kwh",
+	}, []string{"device_id", "alias", "model", "mac"}),
 }
 
 func init() {
 	prometheus.Register(metrics.RelayState)
 	prometheus.Register(metrics.OnTime)
+	prometheus.Register(metrics.Current)
+	prometheus.Register(metrics.Voltage)
+	prometheus.Register(metrics.Power)
+	prometheus.Register(metrics.Total)
 }
 
 func recordMetrics(resp Response) {
@@ -241,5 +261,20 @@ func recordMetrics(resp Response) {
 	}
 	if resp.System.GetSysinfo.OnTime != nil {
 		metrics.OnTime.With(labels).Set(float64(*resp.System.GetSysinfo.OnTime))
+	}
+
+	if resp.Emeter.GetRealtime != nil {
+		if resp.Emeter.GetRealtime.Current != nil {
+			metrics.Current.With(labels).Set(float64(*resp.Emeter.GetRealtime.Current))
+		}
+		if resp.Emeter.GetRealtime.Voltage != nil {
+			metrics.Voltage.With(labels).Set(float64(*resp.Emeter.GetRealtime.Voltage))
+		}
+		if resp.Emeter.GetRealtime.Power != nil {
+			metrics.Power.With(labels).Set(float64(*resp.Emeter.GetRealtime.Power))
+		}
+		if resp.Emeter.GetRealtime.Total != nil {
+			metrics.Total.With(labels).Set(float64(*resp.Emeter.GetRealtime.Total))
+		}
 	}
 }
