@@ -49,6 +49,13 @@ func main() {
 			}
 		}
 	})
+	// Push metrics to TimescaleDB via OTLP in addition to /metrics.
+	if stop, err := startOTLPPush(prometheus.DefaultGatherer); err != nil {
+		log.Printf("OTLP push disabled: %v", err)
+	} else {
+		defer stop()
+	}
+
 	server := http.Server{
 		Addr:    httpListenAddr,
 		Handler: promhttp.Handler(),
