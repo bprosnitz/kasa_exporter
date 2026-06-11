@@ -49,6 +49,13 @@ func main() {
 			}
 		}
 	})
+	// Push metrics to TimescaleDB via OTLP in addition to /metrics.
+	if stop, err := startOTLPPush(prometheus.DefaultGatherer); err != nil {
+		log.Printf("OTLP push disabled: %v", err)
+	} else {
+		defer stop()
+	}
+
 	server := http.Server{
 		Addr:    httpListenAddr,
 		Handler: promhttp.Handler(),
@@ -236,7 +243,7 @@ var metrics = struct {
 		Name: "kasa_realtime_power_watts",
 	}, []string{"device_id", "alias", "model", "mac"}),
 	Total: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "kasa_realtime_total_kwh",
+		Name: "kasa_realtime_total_wh",
 	}, []string{"device_id", "alias", "model", "mac"}),
 }
 
@@ -264,17 +271,17 @@ func recordMetrics(resp Response) {
 	}
 
 	if resp.Emeter.GetRealtime != nil {
-		if resp.Emeter.GetRealtime.Current != nil {
-			metrics.Current.With(labels).Set(float64(*resp.Emeter.GetRealtime.Current))
+		if resp.Emeter.GetRealtime.CurrentMa != nil {
+			metrics.Current.With(labels).Set(float64(*resp.Emeter.GetRealtime.CurrentMa) / 1000)
 		}
-		if resp.Emeter.GetRealtime.Voltage != nil {
-			metrics.Voltage.With(labels).Set(float64(*resp.Emeter.GetRealtime.Voltage))
+		if resp.Emeter.GetRealtime.VoltageMv != nil {
+			metrics.Voltage.With(labels).Set(float64(*resp.Emeter.GetRealtime.VoltageMv) / 1000)
 		}
-		if resp.Emeter.GetRealtime.Power != nil {
-			metrics.Power.With(labels).Set(float64(*resp.Emeter.GetRealtime.Power))
+		if resp.Emeter.GetRealtime.PowerMw != nil {
+			metrics.Power.With(labels).Set(float64(*resp.Emeter.GetRealtime.PowerMw) / 1000)
 		}
-		if resp.Emeter.GetRealtime.Total != nil {
-			metrics.Total.With(labels).Set(float64(*resp.Emeter.GetRealtime.Total))
+		if resp.Emeter.GetRealtime.TotalWh != nil {
+			metrics.Total.With(labels).Set(float64(*resp.Emeter.GetRealtime.TotalWh))
 		}
 	}
 }
